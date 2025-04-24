@@ -1,0 +1,26 @@
+name: Notificar atualizações na documentação
+
+on:
+  push:
+    paths:
+      - 'docs/**'
+      - '**/*.md'
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar últimas alterações
+        uses: actions/checkout@v4
+
+      - name: Enviar notificação para o Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          AUTHOR_NAME=$(git log -1 --pretty=format:'%an')
+          COMMIT_MESSAGE=$(git log -1 --pretty=format:'%s')
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"📘 Documentação atualizada por **${AUTHOR_NAME}**: _\\\"${COMMIT_MESSAGE}\\\"_\"}" \
+               $DISCORD_WEBHOOK
+
