@@ -1,43 +1,68 @@
+name: Notificar atualizações no Discord
+
 on:
   push:
     branches:
-      - master 
+      - master
     paths:
       - 'docs/**'
       - '**/*.md'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'docs/**'
+      - '**/*.md'
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - closed
 
 jobs:
   notify-discord:
     runs-on: ubuntu-latest
     steps:
-      - name: Verificar últimas alterações
+      - name: Checkout do código
         uses: actions/checkout@v4
 
-- name: Enviar notificação para o Discord
-  env:
-    DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-  run: |
-    if [ "${{ github.event_name }}" = "pull_request" ]; then
-      TITLE="${{ github.event.pull_request.title }}"
-      BODY="${{ github.event.pull_request.body }}"
-      AUTHOR="${{ github.event.pull_request.user.login }}"
-      URL="${{ github.event.pull_request.html_url }}"
-      if [ "${{ github.event.pull_request.merged }}" = "true" ]; then
-        STATUS="MERGEADO ✅"
-      else
-        STATUS="Atualizado 🔄"
-      fi
+      - name: Enviar notificação para o Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Variáveis do Pull Request
+            TITLE="${{ github.event.pull_request.title }}"
+            BODY="${{ github.event.pull_request.body }}"
+            AUTHOR="${{ github.event.pull_request.user.login }}"
+            URL="${{ github.event.pull_request.html_url }}"
 
-      curl -H "Content-Type: application/json" \
-           -X POST \
-           -d "{\"content\": \"📘 Pull Request ${STATUS} por **${AUTHOR}**:\n**Título:** _${TITLE}_\n**Descrição:** ${BODY}\n🔗 ${URL}\"}" \
-           $DISCORD_WEBHOOK
-    else
-      COMMITS=$(git log --pretty=format:'- **%an**: _\"%s\"_' ${{ github.event.before }}..${{ github.sha }})
-      if [ -n "$COMMITS" ]; then
-        curl -H "Content-Type: application/json" \
-             -X POST \
-             -d "{\"content\": \"📘 Atualizações na documentação:\n$COMMITS\"}" \
-             $DISCORD_WEBHOOK
-      fi
-    fi
+            # Se não tiver descrição, usar um texto padrão
+            if [ -z "$BODY" ]; then
+              BODY="(sem descrição)"
+            fi
+
+            # Verificar se foi mergeado
+            if [ "${{ github.event.pull_request.merged }}" = "true" ]; then
+              STATUS="Doc Online!"
+            else
+              STATUS="Atualizando"
+            fi
+
+            # Enviar para o Discord
+            curl -H "Content-Type: application/json" \
+                 -X POST \
+                 -d "{\"content\": \"📘 Pull Request ${STATUS} por **${AUTHOR}**:\n**Título:** _${TITLE}_\n**Descrição:** ${BODY}\n🔗 ${URL}\"}" \
+                 $DISCORD_WEBHOOK
+
+          else
+            # Para eventos de push
+            COMMITS=$(git log --pretty=format:'- **%an**: _\"%s\"_' ${{ github.event.before }}..${{ github.sha }} | head -n 10)
+
+            if [ -n "$COMMITS" ]; then
+              curl -H "Content-Type: application/json" \
+                   -X POST \
+                   -d "{\"content\": \"📘 Atualizações na documentação:\n$COMMITS\"}" \
+                   $DISCORD_WEBHOOK
+            fi
+          fi
