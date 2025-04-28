@@ -1,7 +1,7 @@
-name: Notificar atualizações na documentação
-
 on:
   push:
+    branches:
+      - master 
     paths:
       - 'docs/**'
       - '**/*.md'
@@ -17,10 +17,10 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          AUTHOR_NAME=$(git log -1 --pretty=format:'%an')
-          COMMIT_MESSAGE=$(git log -1 --pretty=format:'%s')
-          curl -H "Content-Type: application/json" \
-               -X POST \
-               -d "{\"content\": \"📘 Documentação atualizada por **${AUTHOR_NAME}**: _\\\"${COMMIT_MESSAGE}\\\"_\"}" \
-               $DISCORD_WEBHOOK
-
+          COMMITS=$(git log --pretty=format:'- **%an**: _"%s"_' ${{ github.event.before }}..${{ github.sha }})
+          if [ -n "$COMMITS" ]; then
+            curl -H "Content-Type: application/json" \
+                 -X POST \
+                 -d "{\"content\": \"📘 Atualizações na documentação:\n$COMMITS\"}" \
+                 $DISCORD_WEBHOOK
+          fi
