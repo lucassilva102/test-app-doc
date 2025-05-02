@@ -1,4 +1,4 @@
-name: Notificar atualizações no Discord
+name: Notificação no Discord
 
 on:
   push:
@@ -20,49 +20,41 @@ on:
       - closed
 
 jobs:
-  notify-discord:
+  changelog-discord:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: Enviar notificação para o Discord
+      - name: Enviar atualiações para o Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
+          AUTOR="Yampi"
+
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            # Variáveis do Pull Request
             TITLE="${{ github.event.pull_request.title }}"
             BODY="${{ github.event.pull_request.body }}"
-            AUTHOR="${{ github.event.pull_request.user.login }}"
-            URL="${{ github.event.pull_request.html_url }}"
 
-            # Se não tiver descrição, usar um texto padrão
             if [ -z "$BODY" ]; then
               BODY="(sem descrição)"
             fi
 
-            # Verificar se foi mergeado
             if [ "${{ github.event.pull_request.merged }}" = "true" ]; then
-              STATUS="Doc Online!"
-            else
-              STATUS="Atualizando"
+              STATUS= "Atualização fresquinha!"
+              curl -H "Content-Type: application/json" \
+                   -X POST \
+                   -d "{\"content\": \"📝 ${STATUS} por **${AUTOR}**\n**${TITLE}**\n${BODY}\"}" \
+                   $DISCORD_WEBHOOK
             fi
 
-            # Enviar para o Discord
-            curl -H "Content-Type: application/json" \
-                 -X POST \
-                 -d "{\"content\": \"📘 Pull Request ${STATUS} por **${AUTHOR}**:\n**Título:** _${TITLE}_\n**Descrição:** ${BODY}\n🔗 ${URL}\"}" \
-                 $DISCORD_WEBHOOK
-
-          else
-            # Para eventos de push
-            COMMITS=$(git log --pretty=format:'- **%an**: _\"%s\"_' ${{ github.event.before }}..${{ github.sha }} | head -n 10)
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            COMMITS=$(git log --pretty=format:'- "**Yampi**: \"%s\""' ${{ github.event.before }}..${{ github.sha }} | head -n 10)
 
             if [ -n "$COMMITS" ]; then
               curl -H "Content-Type: application/json" \
                    -X POST \
-                   -d "{\"content\": \"📘 Atualizações na documentação:\n$COMMITS\"}" \
+                   -d "{\"content\": \"📝 Atualizações na documentação por **${AUTOR}**:\n${COMMITS}\"}" \
                    $DISCORD_WEBHOOK
             fi
           fi
