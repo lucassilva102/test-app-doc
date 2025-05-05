@@ -1,3 +1,4 @@
 Repositório para Integração Discord<>Github
 
-#Entratada 1
+#Entrada 1
+#Entrada 2
