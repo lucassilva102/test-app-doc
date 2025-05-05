@@ -41,7 +41,7 @@ jobs:
             fi
 
             if [ "${{ github.event.pull_request.merged }}" = "true" ]; then
-              STATUS= "Atualização fresquinha!"
+              STATUS="Atualização fresquinha!"
               curl -H "Content-Type: application/json" \
                    -X POST \
                    -d "{\"content\": \"📝 ${STATUS} por **${AUTOR}**\n**${TITLE}**\n${BODY}\"}" \
